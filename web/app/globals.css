@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0A0A0A;
+  --foreground: #FAFAFA;
+  --accent: #666666; /* Muted gray */
+}
+
+@theme {
+  --font-serif: "Charter", "Bitstream Charter", "Sitka Text", "Cambria", serif;
+  
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utilities for the 'Ritual' feel */
+.fade-in {
+  animation: fadeIn 1.5s ease-in-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Hide scrollbars for immersion */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Hide scrollbar but keep scroll behavior */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+@layer utilities {
+  @keyframes ripple {
+    0% {
+      transform: scale(0.6);
+      opacity: 0.35;
+    }
+    70% {
+      opacity: 0.15;
+    }
+    100% {
+      transform: scale(1.8);
+      opacity: 0;
+    }
+  }
+
+  .ripple {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    animation: ripple 6s ease-out infinite;
+  }
+
+  .ripple.delay {
+    animation-delay: 2s;
+  }
+
+  .ripple.delay-2 {
+    animation-delay: 4s;
+  }
+}

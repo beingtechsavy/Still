@@ -1,0 +1,108 @@
+import os
+import shutil
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Load env vars
+load_dotenv()
+
+from storage import StorageService
+from transcriber import TranscriberService
+from reflector import ReflectorService
+
+# Globals
+storage_service = None
+transcriber_service = None
+reflector_service = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize services
+    global storage_service, transcriber_service, reflector_service
+    storage_service = StorageService()
+    transcriber_service = TranscriberService()
+    reflector_service = ReflectorService()
+    yield
+    # Shutdown: Clean up if needed
+
+app = FastAPI(
+    title="Still API",
+    description="The silent backend for the Still ritual.",
+    version="0.1.0",
+    lifespan=lifespan
+)
+
+# CORS: Allow the frontend to talk to us
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+async def health_check():
+    return {"status": "still", "silence": True}
+
+@app.post("/process-audio")
+async def process_audio(file: UploadFile = File(...)):
+    if not file:
+        raise HTTPException(status_code=400, detail="No audio file provided")
+
+    # 1. Save temp file (local or blob)
+    # For transcription via SDK, a local file is safest/easiest.
+    # We will use a local /tmp dir for processing, then upload to blob if we wanted archivals (but we don't).
+    # Actually, the architecture says: Blob Storage -> Transcribe -> Delete.
+    # Let's follow the architecture: Upload to Blob -> Get SAS/Path -> Transcribe (downloading if needed) -> Delete.
+    
+    # However, Azure Speech SDK often wants a local file path.
+    # Hybrid approach for performance: 
+    #   a. Save to local temp (fast validation)
+    #   b. Transcribe
+    #   c. Upload to Blob (just to prove we can, or skip if we strictly follow "Nothing persists")
+    #   d. The prompt says "Store temporaily in memory or temp storage... Delete immediately".
+    #   e. Azure Blob was recommended for "Temp Storage".
+    
+    filename = f"audio_{os.urandom(4).hex()}.webm"
+    temp_path = f"temp_{filename}"
+    
+    try:
+        # Save locally for processing
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Optional: Upload to blob (as per architecture requirement 4.4)
+        # This acts as the "Temp Storage" before processing if we had async workers.
+        # Since we are synchronous here, we might just use the local file.
+        # But let's use the service to show we built it.
+        # with open(temp_path, "rb") as f:
+        #     blob_url = await storage_service.upload_audio(f.read(), filename)
+        
+        # 2. Transcribe
+        transcript = await transcriber_service.transcribe(temp_path)
+        print(f"Transcript: {transcript}")
+        
+        # 3. Reflect
+        reflection_data = await reflector_service.reflect(transcript)
+        
+        return reflection_data
+
+    except Exception as e:
+        print(f"Processing Error: {e}")
+        raise HTTPException(status_code=500, detail="The silence was too heavy.")
+        
+    finally:
+        # 4. Cleanup (Crucial)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        # If we uploaded to blob, delete it too
+        # await storage_service.delete_audio(filename)

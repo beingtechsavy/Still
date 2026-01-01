@@ -1,0 +1,462 @@
+Alright. This is the **full architecture + product blueprint**, written so you can **feed it directly into an AI coding IDE** (including Google Antigravity) and actually build the thing without ambiguity.
+
+I’ll design this the way a **senior product architect + Jobs-level product thinker** would:
+clear layers, clear responsibilities, and ruthless restraint.
+
+This will be **mobile-first, web-first, silent, and memorable**.
+
+---
+
+# STILL — WEB APP ARCHITECTURE & PRODUCT BLUEPRINT
+
+*(Mobile-first, anonymous, one-time reflective experience)*
+
+---
+
+## 1. PRODUCT NORTH STAR (DO NOT SKIP)
+
+Before architecture, lock this mentally:
+
+**This is not an app.
+This is a ritual delivered via the web.**
+
+Everything in the system must answer one question:
+
+> “Does this help someone feel lighter and leave cleanly?”
+
+If the answer is no → it does not belong.
+
+---
+
+## 2. EXPERIENCE FLOW (AUTHORITATIVE)
+
+There are **exactly 5 states**.
+No branching. No shortcuts.
+
+1. Arrival
+2. Voice Unloading
+3. Stillness
+4. Reflection + Collective Mirror
+5. Closure + Share Artifact
+
+The entire system exists to support these five states.
+
+---
+
+## 3. FRONTEND ARCHITECTURE (MOBILE-FIRST, SILENCE-FIRST)
+
+### 3.1 Framework Choice
+
+**Next.js (App Router)**
+Reason:
+
+* Excellent mobile performance
+* Server Components reduce client JS
+* Perfect for linear experiences
+* Easy deployment on Azure Static Web Apps / Vercel-style infra
+
+**Rendering strategy**
+
+* Mostly static pages
+* One dynamic API interaction
+* No client-side routing complexity
+
+---
+
+### 3.2 UI Philosophy
+
+Design principles (non-negotiable):
+
+* One column layout
+* Large margins
+* No icons unless essential
+* No navigation bar
+* No footer
+* No settings
+* No theme switch
+* No “back” buttons
+
+This is intentional deprivation.
+
+---
+
+### 3.3 Pages / Routes
+
+You should have **no more than these routes**:
+
+```
+/
+ /speak
+ /pause
+ /reflection
+ /close
+```
+
+Each route maps to **one emotional state**.
+
+---
+
+### 3.4 Visual System
+
+**Colors**
+
+* Background: #0A0A0A or off-white (#FAFAFA)
+* Text: pure white or near-black
+* Accent: one muted gray
+
+**Typography**
+
+* Single font family (recommended: Charter / IBM Plex Serif)
+* Two font sizes per page:
+
+  * Primary message
+  * Secondary guidance
+
+No bold overload.
+No emojis.
+No animations beyond fade-in.
+
+---
+
+### 3.5 Audio Capture (Critical)
+
+Use **native Web MediaRecorder API**.
+
+Rules:
+
+* Max recording: 90 seconds
+* No waveform
+* No playback
+* No save locally
+* No re-record
+
+Flow:
+
+* Start recording
+* Timer counts down
+* Auto stop
+* Blob sent to backend
+* Blob discarded on frontend
+
+---
+
+### 3.6 Frontend Responsibilities (Your Duties)
+
+You must ensure:
+
+* Mobile Safari compatibility (iOS matters)
+* Permission request happens *only* on record start
+* Failure states are quiet and human
+* No console logs in production
+* No tracking scripts
+
+Frontend does **not**:
+
+* Store anything
+* Analyze anything
+* Decide anything
+
+Frontend only **guides the ritual**.
+
+---
+
+## 4. BACKEND ARCHITECTURE (INVISIBLE & DISPOSABLE)
+
+### 4.1 Backend Framework
+
+**FastAPI (Python)**
+
+Why:
+
+* Minimal boilerplate
+* Strong request/response schemas
+* Easy AI integration
+* Predictable behavior
+
+You will build **one service**, not microservices.
+
+---
+
+### 4.2 API Endpoints (Minimal)
+
+```
+POST /process-audio
+GET  /health
+```
+
+That’s it.
+
+No user endpoints.
+No auth endpoints.
+No admin endpoints.
+
+---
+
+### 4.3 Backend Flow (Step by Step)
+
+**POST /process-audio**
+
+1. Receive audio blob (multipart)
+2. Store temporarily in memory or temp storage
+3. Transcribe audio (Speech-to-Text)
+4. Run reflection generation (LLM)
+5. Extract anonymized theme tokens
+6. Update aggregated counters
+7. Return structured response
+8. Delete audio + transcript immediately
+
+**Nothing persists beyond step 6.**
+
+---
+
+### 4.4 Temporary Storage
+
+Use **Azure Blob Storage (hot tier)**
+TTL enforced via lifecycle rules.
+
+* Audio files auto-delete after processing
+* No backups
+* No logs with content
+
+Your ₹12,000 Azure credits are perfect for this.
+
+---
+
+## 5. AI STACK (RESTRAINT OVER INTELLIGENCE)
+
+### 5.1 Speech-to-Text
+
+**Option A (Recommended): Azure Speech-to-Text**
+
+* Excellent accuracy
+* Easy integration
+* Covered by Azure credits
+
+**Option B: OpenAI Whisper API**
+
+* Also fine
+* Slightly slower
+
+Do NOT do emotion detection here.
+
+---
+
+### 5.2 Language Model
+
+Use **one general-purpose LLM**:
+
+* Azure OpenAI GPT-4-class OR
+* Gemini / Claude if available
+
+You are not “training” a model.
+
+You are **constraining it**.
+
+---
+
+### 5.3 Prompt Architecture (Very Important)
+
+Single prompt.
+Single response.
+No chat history.
+
+Prompt responsibilities:
+
+1. Read transcript
+2. Identify dominant emotional themes (not labels)
+3. Write one reflective message
+4. Generate 3–5 neutral truth bullets
+5. Generate collective mirror text
+
+Output **must be strict JSON**.
+
+No creative freedom outside boundaries.
+
+---
+
+### 5.4 Aggregation Logic (Anonymous Collective)
+
+You only store:
+
+* Theme tags (e.g. “effort_without_reward”)
+* Count per tag
+* Time window (December)
+
+You never store:
+
+* Raw text
+* Audio
+* User identifiers
+* IP addresses
+
+Aggregation phrasing is generated **fresh**, not templated.
+
+---
+
+## 6. RESPONSE FORMAT (FRONTEND CONSUMES THIS)
+
+Example (structure only):
+
+```json
+{
+  "reflection": "Text...",
+  "flashcard": {
+    "title": "What this year took — and what it gave me",
+    "bullets": [
+      "...",
+      "...",
+      "..."
+    ]
+  },
+  "collective_mirror": "Many people this year talked about...",
+  "confidence": 0.87
+}
+```
+
+Frontend **renders**, never edits.
+
+---
+
+## 7. STILLNESS & FAILURE DESIGN
+
+This product must fail **gracefully**.
+
+If:
+
+* Transcription fails
+* Model times out
+* Audio is silent
+
+Then show:
+
+> “That didn’t come through clearly.
+> If you want, you can try once more.”
+
+No stack traces.
+No apologies.
+No retries automatically.
+
+---
+
+## 8. SHARING ARTIFACT (MEMORY ENGINE)
+
+### 8.1 Flashcard Rendering
+
+Generate flashcard as:
+
+* HTML → Canvas → PNG
+* Fixed aspect ratio (Instagram friendly)
+* Neutral design
+
+No watermarks.
+No branding dominance.
+
+---
+
+### 8.2 Why This Works
+
+People don’t remember apps.
+They remember **artifacts**.
+
+This flashcard is the artifact.
+
+---
+
+## 9. DEPLOYMENT ON AZURE (USING YOUR CREDITS)
+
+### 9.1 Recommended Azure Setup
+
+* **Azure Static Web Apps** → Frontend
+* **Azure Container Apps / App Service** → FastAPI backend
+* **Azure Blob Storage** → Temp audio
+* **Azure OpenAI / Speech** → AI services
+
+This will easily fit in ₹12,000 credits for MVP.
+
+---
+
+### 9.2 Security & Privacy
+
+* HTTPS only
+* No cookies except session
+* CSP headers strict
+* No analytics initially
+* No logs containing content
+
+Your privacy policy should be **short and honest**.
+
+---
+
+## 10. YOUR RESPONSIBILITIES (AS BUILDER)
+
+You are responsible for:
+
+1. Enforcing restraint (not adding features)
+2. Writing the **final prompt** carefully
+3. Setting TTL deletion rules
+4. Testing on real phones
+5. Killing ideas that dilute silence
+6. Shipping on time, not perfectly
+
+You are **not** responsible for:
+
+* Scaling
+* Monetization
+* Retention
+* Growth hacks
+
+Not yet.
+
+---
+
+## 11. WHAT YOU MUST NOT BUILD (FINAL WARNING)
+
+Do not build:
+
+* Accounts
+* Profiles
+* Replays
+* History
+* Personalization
+* Analytics dashboards
+* Notifications
+* “Try again tomorrow”
+* Email capture
+
+Each one breaks the ritual.
+
+---
+
+## 12. SUCCESS CRITERIA (REAL, NOT FAKE)
+
+This product succeeds if:
+
+* Someone closes it and sits quietly
+* Someone screenshots it
+* Someone sends it to one other human
+* Someone remembers it weeks later
+
+That’s it.
+
+---
+
+## FINAL WORD
+
+This is not a “project”.
+This is a **statement of taste**.
+
+Most developers prove skill by adding complexity.
+You will prove maturity by **stopping early**.
+
+If you build this with discipline, people won’t just use it.
+
+They’ll remember **when** they used it.
+
+If you want next, I can:
+
+* Write the exact system prompt
+* Generate the folder structure for Antigravity
+* Create a build checklist for 7 days
+* Or help you decide the exact launch moment
+
+Say the word.
