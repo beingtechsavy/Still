@@ -97,15 +97,23 @@ class ReflectorService:
         api_version = os.getenv("OPENAI_API_VERSION", "2024-12-01-preview")
         deployment_name = os.getenv("OPENAI_DEPLOYMENT_NAME")
 
+        # Debug logging
+        print(f"DEBUG - API Key present: {bool(api_key)}")
+        print(f"DEBUG - Endpoint: {endpoint}")
+        print(f"DEBUG - API Version: {api_version}")
+        print(f"DEBUG - Deployment: {deployment_name}")
+
         # Ensure endpoint includes protocol
         if endpoint and not endpoint.startswith(("http://", "https://")):
             endpoint = "https://" + endpoint
 
         try:
             if not api_key or not endpoint:
+                print("ERROR: OPENAI_API_KEY and OPENAI_API_BASE must be set in environment")
                 raise ValueError("OPENAI_API_KEY and OPENAI_API_BASE must be set in environment")
             
             if not deployment_name:
+                print("ERROR: OPENAI_DEPLOYMENT_NAME must be set in environment")
                 raise ValueError("OPENAI_DEPLOYMENT_NAME must be set in environment")
 
             self.client = AzureOpenAI(
@@ -114,9 +122,9 @@ class ReflectorService:
                 api_version=api_version,
             )
             
-            print(f"Azure OpenAI initialized successfully with deployment: {deployment_name}")
+            print(f"✅ Azure OpenAI initialized successfully with deployment: {deployment_name}")
         except Exception as e:
-            print("Azure OpenAI init failed:", e)
+            print(f"❌ Azure OpenAI init failed: {e}")
             self.client = None
 
         self.model = deployment_name  # Use deployment name, not model name
