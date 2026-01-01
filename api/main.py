@@ -39,6 +39,10 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://*.vercel.app",
+    "https://*.netlify.app", 
+    "https://*.render.com",
+    "*"  # Allow all origins for now - restrict in production
 ]
 
 app.add_middleware(
