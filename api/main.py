@@ -53,6 +53,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/debug-azure")
+async def debug_azure():
+    """Debug endpoint to test Azure OpenAI connection"""
+    try:
+        # Test environment variables
+        api_key = os.getenv("OPENAI_API_KEY")
+        endpoint = os.getenv("OPENAI_API_BASE")
+        deployment = os.getenv("OPENAI_DEPLOYMENT_NAME")
+        
+        env_status = {
+            "api_key_present": bool(api_key),
+            "api_key_length": len(api_key) if api_key else 0,
+            "endpoint": endpoint,
+            "deployment": deployment
+        }
+        
+        # Test Azure OpenAI connection
+        if reflector_service and reflector_service.client:
+            test_result = reflector_service._call_model("Test message")
+            return {
+                "status": "success",
+                "environment": env_status,
+                "azure_test": "success" if test_result else "failed",
+                "test_result": test_result
+            }
+        else:
+            return {
+                "status": "error",
+                "environment": env_status,
+                "azure_test": "client_not_initialized",
+                "error": "ReflectorService client is None"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": str(type(e))
+        }
+
 @app.get("/health")
 async def health_check():
     return {"status": "still", "silence": True}
