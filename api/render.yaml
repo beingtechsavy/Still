@@ -5,7 +5,7 @@ services:
     rootDir: api
     buildCommand: |
       apt-get update
-      apt-get install -y ffmpeg
+      apt-get install -y ffmpeg libasound2-dev libpulse-dev
       pip install -r requirements.txt
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
