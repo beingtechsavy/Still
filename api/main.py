@@ -53,6 +53,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/debug-speech")
+async def debug_speech():
+    """Debug endpoint to test Azure Speech Service configuration"""
+    try:
+        import azure.cognitiveservices.speech as speechsdk
+        
+        speech_key = os.getenv("SPEECH_KEY")
+        speech_region = os.getenv("SPEECH_REGION")
+        
+        result = {
+            "speech_key_present": bool(speech_key),
+            "speech_key_first_10": speech_key[:10] if speech_key else None,
+            "speech_region": speech_region,
+            "same_as_openai_key": speech_key == os.getenv("OPENAI_API_KEY") if speech_key else False
+        }
+        
+        if speech_key and speech_region:
+            try:
+                # Test Speech Service configuration
+                speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
+                speech_config.speech_recognition_language = "en-US"
+                
+                # Try to create a recognizer (this validates the config)
+                recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config)
+                
+                result["speech_service_status"] = "initialized_successfully"
+                result["error"] = None
+                
+            except Exception as e:
+                result["speech_service_status"] = "initialization_failed"
+                result["error"] = str(e)
+        else:
+            result["speech_service_status"] = "missing_credentials"
+            result["error"] = "Missing SPEECH_KEY or SPEECH_REGION"
+            
+        return result
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": str(type(e))
+        }
+
 @app.get("/test")
 async def test_endpoint():
     """Simple test endpoint to verify connectivity"""
@@ -125,6 +169,49 @@ async def debug_azure():
 @app.get("/health")
 async def health_check():
     return {"status": "still", "silence": True}
+
+@app.post("/debug-audio-processing")
+async def debug_audio_processing(file: UploadFile = File(...)):
+    """Debug endpoint to test the full audio processing pipeline"""
+    print(f"🔍 DEBUG: Received file: {file.filename}, size: {file.size}, type: {file.content_type}")
+    
+    # Save the file temporarily
+    filename = f"debug_audio_{os.urandom(4).hex()}.webm"
+    temp_path = f"temp_{filename}"
+    
+    try:
+        # Save file
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        file_size = os.path.getsize(temp_path)
+        print(f"🔍 DEBUG: File saved, size: {file_size} bytes")
+        
+        # Test transcription
+        transcript = await transcriber_service.transcribe(temp_path)
+        print(f"🔍 DEBUG: Transcript: {transcript}")
+        
+        return {
+            "status": "success",
+            "file_info": {
+                "filename": file.filename,
+                "size": file.size,
+                "content_type": file.content_type,
+                "saved_size": file_size
+            },
+            "transcript": transcript,
+            "transcript_length": len(transcript)
+        }
+        
+    except Exception as e:
+        print(f"🔍 DEBUG ERROR: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 @app.post("/process-audio")
 async def process_audio(file: UploadFile = File(...)):
