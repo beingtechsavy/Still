@@ -2,11 +2,32 @@ import os
 import azure.cognitiveservices.speech as speechsdk
 import asyncio
 import hashlib
+from openai import AzureOpenAI
 
 class TranscriberService:
     def __init__(self):
         self.speech_key = os.getenv("SPEECH_KEY")
         self.speech_region = os.getenv("SPEECH_REGION")
+        
+        # Also initialize OpenAI client for Whisper fallback
+        self.openai_client = None
+        try:
+            api_key = os.getenv("OPENAI_API_KEY")
+            endpoint = os.getenv("OPENAI_API_BASE")
+            api_version = os.getenv("OPENAI_API_VERSION", "2024-12-01-preview")
+            
+            if api_key and endpoint:
+                if not endpoint.startswith(("http://", "https://")):
+                    endpoint = "https://" + endpoint
+                    
+                self.openai_client = AzureOpenAI(
+                    api_key=api_key,
+                    azure_endpoint=endpoint,
+                    api_version=api_version,
+                )
+                print("✅ OpenAI client initialized for Whisper fallback")
+        except Exception as e:
+            print(f"❌ OpenAI client init failed: {e}")
         
         # Debug logging
         print(f"DEBUG - Speech Key present: {bool(self.speech_key)}")
@@ -23,46 +44,65 @@ class TranscriberService:
                 self.speech_config = None
         else:
             self.speech_config = None
-            print("WARNING: Speech Service credentials missing. Using mock transcription.")
+            print("WARNING: Speech Service credentials missing. Using fallback transcription.")
+
+    async def transcribe_with_whisper(self, audio_path: str) -> str:
+        """Try to use OpenAI Whisper API for transcription"""
+        if not self.openai_client:
+            return None
+            
+        try:
+            print("🎤 Attempting Whisper API transcription...")
+            with open(audio_path, "rb") as audio_file:
+                transcript = self.openai_client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text"
+                )
+            print(f"✅ Whisper transcription successful: {transcript}")
+            return transcript
+        except Exception as e:
+            print(f"❌ Whisper transcription failed: {e}")
+            return None
 
     async def transcribe(self, audio_path: str) -> str:
         """
-        Transcribes audio from a file path using Azure Speech Service.
+        Transcribes audio from a file path using Azure Speech Service or Whisper fallback.
         """
-        if not self.speech_config:
-            print("⚠️ Speech Service not configured, using mock transcription")
-            await asyncio.sleep(1)
-            return "This is a mock transcription. The user spoke about their thoughts and feelings during this quiet moment."
-
-        # Azure Speech SDK typically needs a local file path
         if not os.path.exists(audio_path):
              return "(Audio file not found for transcription)"
 
         print(f"🎤 Starting transcription for: {audio_path}")
         print(f"📁 Audio file size: {os.path.getsize(audio_path)} bytes")
         
-        # Try direct transcription first (some formats might work)
-        try:
-            print("🎯 Attempting direct transcription without conversion...")
-            audio_config = speechsdk.audio.AudioConfig(filename=audio_path)
-            speech_recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=audio_config)
+        # Try Azure Speech Service first
+        if self.speech_config:
+            try:
+                print("🎯 Attempting Azure Speech Service transcription...")
+                audio_config = speechsdk.audio.AudioConfig(filename=audio_path)
+                speech_recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=audio_config)
 
-            print("🎤 Starting speech recognition...")
-            result = speech_recognizer.recognize_once()
-            
-            if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-                print(f"✅ Direct transcription successful: {result.text}")
-                return result.text
-            elif result.reason == speechsdk.ResultReason.NoMatch:
-                print("❌ No speech could be recognized in direct transcription")
-            elif result.reason == speechsdk.ResultReason.Canceled:
-                cancellation_details = result.cancellation_details
-                print(f"❌ Direct transcription canceled: {cancellation_details.reason}")
-                if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                    print(f"❌ Error details: {cancellation_details.error_details}")
-            
-        except Exception as e:
-            print(f"❌ Direct transcription failed: {e}")
+                print("🎤 Starting speech recognition...")
+                result = speech_recognizer.recognize_once()
+                
+                if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+                    print(f"✅ Azure Speech transcription successful: {result.text}")
+                    return result.text
+                elif result.reason == speechsdk.ResultReason.NoMatch:
+                    print("❌ No speech could be recognized with Azure Speech")
+                elif result.reason == speechsdk.ResultReason.Canceled:
+                    cancellation_details = result.cancellation_details
+                    print(f"❌ Azure Speech transcription canceled: {cancellation_details.reason}")
+                    if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                        print(f"❌ Error details: {cancellation_details.error_details}")
+                
+            except Exception as e:
+                print(f"❌ Azure Speech transcription failed: {e}")
+        
+        # Try Whisper API as fallback
+        whisper_result = await self.transcribe_with_whisper(audio_path)
+        if whisper_result:
+            return whisper_result
         
         # Intelligent fallback based on file characteristics
         print("🔄 Using intelligent fallback transcription...")
