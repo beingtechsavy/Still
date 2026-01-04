@@ -53,6 +53,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/test")
+async def test_endpoint():
+    """Simple test endpoint to verify connectivity"""
+    print("🔥 Test endpoint called!")
+    return {"message": "Backend is working!", "timestamp": "2026-01-04"}
+
 @app.get("/debug-ffmpeg")
 async def debug_ffmpeg():
     """Debug endpoint to test FFmpeg availability"""
@@ -122,54 +128,42 @@ async def health_check():
 
 @app.post("/process-audio")
 async def process_audio(file: UploadFile = File(...)):
+    print(f"🎯 Received audio upload: {file.filename}, size: {file.size}, content_type: {file.content_type}")
+    
     if not file:
         raise HTTPException(status_code=400, detail="No audio file provided")
 
     # 1. Save temp file (local or blob)
-    # For transcription via SDK, a local file is safest/easiest.
-    # We will use a local /tmp dir for processing, then upload to blob if we wanted archivals (but we don't).
-    # Actually, the architecture says: Blob Storage -> Transcribe -> Delete.
-    # Let's follow the architecture: Upload to Blob -> Get SAS/Path -> Transcribe (downloading if needed) -> Delete.
-    
-    # However, Azure Speech SDK often wants a local file path.
-    # Hybrid approach for performance: 
-    #   a. Save to local temp (fast validation)
-    #   b. Transcribe
-    #   c. Upload to Blob (just to prove we can, or skip if we strictly follow "Nothing persists")
-    #   d. The prompt says "Store temporaily in memory or temp storage... Delete immediately".
-    #   e. Azure Blob was recommended for "Temp Storage".
-    
     filename = f"audio_{os.urandom(4).hex()}.webm"
     temp_path = f"temp_{filename}"
     
     try:
+        print(f"💾 Saving audio to: {temp_path}")
         # Save locally for processing
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # Optional: Upload to blob (as per architecture requirement 4.4)
-        # This acts as the "Temp Storage" before processing if we had async workers.
-        # Since we are synchronous here, we might just use the local file.
-        # But let's use the service to show we built it.
-        # with open(temp_path, "rb") as f:
-        #     blob_url = await storage_service.upload_audio(f.read(), filename)
+        print(f"✅ Audio saved, file size: {os.path.getsize(temp_path)} bytes")
         
         # 2. Transcribe
+        print("🎤 Starting transcription...")
         transcript = await transcriber_service.transcribe(temp_path)
-        print(f"Transcript: {transcript}")
+        print(f"📝 Transcript: {transcript}")
         
         # 3. Reflect
+        print("🤔 Starting reflection...")
         reflection_data = await reflector_service.reflect(transcript)
+        print("✅ Reflection complete")
         
         return reflection_data
 
     except Exception as e:
-        print(f"Processing Error: {e}")
+        print(f"❌ Processing Error: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="The silence was too heavy.")
         
     finally:
         # 4. Cleanup (Crucial)
         if os.path.exists(temp_path):
             os.remove(temp_path)
-        # If we uploaded to blob, delete it too
-        # await storage_service.delete_audio(filename)
+            print(f"🗑️ Cleaned up: {temp_path}")
