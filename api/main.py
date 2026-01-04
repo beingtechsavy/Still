@@ -53,6 +53,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/debug-ffmpeg")
+async def debug_ffmpeg():
+    """Debug endpoint to test FFmpeg availability"""
+    try:
+        import subprocess
+        result = subprocess.run(["ffmpeg", "-version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return {
+            "status": "success",
+            "ffmpeg_available": True,
+            "version_info": result.stdout.split('\n')[0]  # First line has version
+        }
+    except FileNotFoundError:
+        return {
+            "status": "error",
+            "ffmpeg_available": False,
+            "error": "FFmpeg not found"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "ffmpeg_available": False,
+            "error": str(e)
+        }
+
 @app.get("/debug-azure")
 async def debug_azure():
     """Debug endpoint to test Azure OpenAI connection"""

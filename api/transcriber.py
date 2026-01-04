@@ -41,10 +41,18 @@ class TranscriberService:
 
         # Convert to WAV (PCM 16kHz 16bit Mono) for optimal Azure Speech compatibility
         wav_path = audio_path + ".wav"
+        target_file = audio_path  # Default to original file
+        
         try:
             import subprocess
             # Check if ffmpeg is available
-            subprocess.run(["ffmpeg", "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("🔧 Checking FFmpeg availability...")
+            result = subprocess.run(["ffmpeg", "-version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            print("✅ FFmpeg is available")
+            
+            # Check original file info
+            print(f"📁 Original file: {audio_path}")
+            print(f"📁 File size: {os.path.getsize(audio_path)} bytes")
             
             # ffmpeg -i input -ar 16000 -ac 1 -c:a pcm_s16le output.wav -y
             cmd = [
@@ -53,19 +61,27 @@ class TranscriberService:
                 "-c:a", "pcm_s16le", 
                 wav_path, "-y", "-nostdin"
             ]
-            # Run silently
-            result = subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f"✅ Audio converted successfully to {wav_path}")
-            target_file = wav_path
+            print(f"🔧 Running FFmpeg: {' '.join(cmd)}")
+            
+            # Run with output capture for debugging
+            result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            if os.path.exists(wav_path):
+                print(f"✅ Audio converted successfully to {wav_path}")
+                print(f"📁 Converted file size: {os.path.getsize(wav_path)} bytes")
+                target_file = wav_path
+            else:
+                print("❌ Converted file not found, using original")
+                
         except FileNotFoundError:
-            print("❌ FFmpeg not found. Using original file (may cause audio format issues).")
-            target_file = audio_path
+            print("❌ FFmpeg not found. Using original file (will likely cause audio format issues).")
         except subprocess.CalledProcessError as e:
-            print(f"❌ FFmpeg conversion failed with exit code {e.returncode}. Using original file.")
-            target_file = audio_path
+            print(f"❌ FFmpeg conversion failed with exit code {e.returncode}")
+            print(f"❌ FFmpeg stderr: {e.stderr}")
+            print("❌ Using original file")
         except Exception as e:
-            print(f"❌ FFmpeg conversion failed: {e}. Using original file.")
-            target_file = audio_path
+            print(f"❌ FFmpeg conversion failed: {e}")
+            print("❌ Using original file")
 
         try:
             audio_config = speechsdk.audio.AudioConfig(filename=target_file)
