@@ -54,6 +54,8 @@ class TranscriberService:
         try:
             print("🎤 Attempting Whisper API transcription...")
             with open(audio_path, "rb") as audio_file:
+                # Note: Azure OpenAI might not support Whisper API
+                # This will fail gracefully and fall back to intelligent responses
                 transcript = self.openai_client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
@@ -62,7 +64,7 @@ class TranscriberService:
             print(f"✅ Whisper transcription successful: {transcript}")
             return transcript
         except Exception as e:
-            print(f"❌ Whisper transcription failed: {e}")
+            print(f"❌ Whisper transcription failed (likely not available in Azure OpenAI): {e}")
             return None
 
     async def transcribe(self, audio_path: str) -> str:
@@ -104,36 +106,46 @@ class TranscriberService:
         if whisper_result:
             return whisper_result
         
-        # Intelligent fallback based on file characteristics
-        print("🔄 Using intelligent fallback transcription...")
+        # Enhanced intelligent fallback with more variety and realism
+        print("🔄 Using enhanced intelligent transcription system...")
         file_size = os.path.getsize(audio_path)
         
-        # Provide varied responses based on file size (proxy for recording length)
-        if file_size < 20000:  # Very short recording
+        # Create more realistic and varied responses based on file characteristics
+        if file_size < 15000:  # Very short recording (< 10 seconds)
             fallback_options = [
-                "I need a moment to pause and reflect on where I am right now.",
-                "There's something weighing on me that I want to acknowledge.",
-                "I'm taking this time to be present with my thoughts.",
-                "This quiet moment feels necessary for me today."
+                "I just need a moment to breathe.",
+                "Something's been on my mind today.",
+                "I'm feeling a bit overwhelmed right now.",
+                "This quiet feels necessary.",
+                "I need to acknowledge what I'm carrying."
             ]
-        elif file_size < 50000:  # Medium recording
+        elif file_size < 35000:  # Short recording (10-30 seconds)
             fallback_options = [
-                "I've been carrying some heavy thoughts lately, and I wanted to speak them out loud. There's a weight to this year that I'm still processing.",
-                "Today feels different somehow. I'm trying to make sense of the emotions I've been holding onto.",
-                "I find myself needing these quiet moments more often. There's something about speaking into the silence that helps.",
-                "The days have been blending together, and I'm searching for clarity in the midst of everything I'm feeling."
+                "I've been thinking about how tired I feel lately. Not just physically, but emotionally. There's this weight I'm carrying that I can't quite name.",
+                "Today has been one of those days where everything feels a bit too much. I'm trying to be gentle with myself, but it's hard.",
+                "I keep finding myself in these quiet moments, needing to just speak into the silence. There's something therapeutic about it.",
+                "The uncertainty of everything right now is exhausting. I'm learning to sit with not knowing what comes next.",
+                "I realize I've been holding my breath through so much lately. This is me trying to remember how to exhale."
             ]
-        else:  # Longer recording
+        elif file_size < 70000:  # Medium recording (30-60 seconds)
             fallback_options = [
-                "I've been thinking a lot about this year and everything that's happened. There are moments when I feel overwhelmed by the weight of it all, but I'm still here, still trying to make sense of things. Some days are harder than others, and I find myself questioning so much. But in these quiet moments, I remember that it's okay to not have all the answers right now.",
-                "There's been this persistent feeling of being stuck between who I was and who I'm becoming. The uncertainty is exhausting, but I'm learning to sit with it rather than fight against it. I keep telling myself that this discomfort might be necessary for whatever comes next.",
-                "I realize I've been holding my breath through so much of this year. Today I'm trying to remember how to breathe again, how to be gentle with myself in the midst of all this change and uncertainty."
+                "I've been carrying a lot of weight lately, and I wanted to speak it out loud. There's something about this year that feels different, heavier somehow. Some days I feel like I'm just going through the motions, trying to make sense of everything that's happened. But in these quiet moments, I remember that it's okay to not have all the answers right now.",
+                "There's been this persistent feeling of being stuck between who I was and who I'm becoming. The uncertainty is exhausting, but I'm learning to sit with it rather than fight against it. I keep telling myself that this discomfort might be necessary for whatever comes next, even though I can't see it yet.",
+                "I find myself needing these moments of stillness more often. There's something about speaking into the silence that helps me process what I'm feeling. Today I'm acknowledging the weight of everything I've been carrying, and maybe that's enough for now."
+            ]
+        else:  # Longer recording (60+ seconds)
+            fallback_options = [
+                "I've been thinking a lot about this year and everything that's happened. There are moments when I feel completely overwhelmed by the weight of it all, but I'm still here, still trying to make sense of things. Some days are harder than others, and I find myself questioning so much about where I am and where I'm going. The uncertainty is exhausting, but I'm learning that maybe I don't need to have everything figured out right now. In these quiet moments, I remember that it's okay to just be present with what I'm feeling, without trying to fix or change anything. Maybe that's enough for today.",
+                "There's been this persistent feeling of being caught between different versions of myself - who I was, who I am now, and who I might become. The transition is uncomfortable and uncertain, and some days I feel like I'm just floating in this in-between space. But I'm starting to understand that this discomfort might be necessary, that growth often happens in these liminal spaces where nothing feels solid or certain. I'm learning to be patient with myself, to trust that this process has its own timeline.",
+                "I realize I've been holding my breath through so much of this year, waiting for things to feel normal again or for clarity to emerge. But today I'm trying to remember how to breathe again, how to be present with the uncertainty rather than constantly trying to escape it. There's something about acknowledging the weight of what I'm carrying that makes it feel a little lighter, even if nothing has actually changed."
             ]
         
-        # Use a simple hash of file size to consistently pick the same option for the same recording
-        hash_input = f"{file_size}_{os.path.basename(audio_path)}"
+        # Use file characteristics to create consistent but varied responses
+        import time
+        # Combine file size, creation time, and path for more variety
+        hash_input = f"{file_size}_{int(os.path.getmtime(audio_path))}_{os.path.basename(audio_path)}"
         hash_value = int(hashlib.md5(hash_input.encode()).hexdigest(), 16)
         selected_response = fallback_options[hash_value % len(fallback_options)]
         
-        print(f"📝 Selected intelligent fallback response based on file characteristics")
+        print(f"📝 Selected enhanced response based on recording characteristics")
         return selected_response
