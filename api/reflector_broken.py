@@ -99,7 +99,6 @@ class ReflectorService:
 
         # Debug logging
         print(f"DEBUG - API Key present: {bool(api_key)}")
-        print(f"DEBUG - API Key first 10: {api_key[:10] if api_key else 'None'}")
         print(f"DEBUG - Endpoint: {endpoint}")
         print(f"DEBUG - API Version: {api_version}")
         print(f"DEBUG - Deployment: {deployment_name}")
@@ -133,8 +132,8 @@ class ReflectorService:
 
     def _call_model(self, transcript: str) -> dict | None:
         try:
-            print(f"🔄 Making API call with model/deployment: {self.model}")
-            print(f"🔄 Transcript length: {len(transcript)} characters")
+            print(f"Making API call with model/deployment: {self.model}")
+            print(f"Transcript length: {len(transcript)} characters")
             
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -143,10 +142,8 @@ class ReflectorService:
                     {"role": "user", "content": transcript},
                 ],
                 max_completion_tokens=self.token_limit,
-                timeout=30
+                timeout=30  # Add explicit timeout
             )
-
-            print(f"✅ Got response from Azure OpenAI")
 
             # Azure safety: choices can exist but be empty
             if not response.choices:
@@ -158,51 +155,50 @@ class ReflectorService:
                 print("❌ No message content in response")
                 return None
 
-            content = message.content.strip()
-            print(f"✅ Raw response content length: {len(content)}")
+            content = meip()
+
+")
 
             # Remove markdown if present
-            cleaned = content.replace("```json", "").replace("```", "").strip()
 
-            # Try direct JSON parse
+
+            # Tr
             try:
                 result = json.loads(cleaned)
-                print("✅ Successfully parsed JSON response")
+                print("✅ Succ)
                 return result
             except json.JSONDecodeError as e:
-                print(f"❌ Direct JSON parse failed: {e}")
+
 
             # Try extracting JSON block
-            match = re.search(r"\{[\s\S]*\}", cleaned)
+            match = red)
             if match:
                 try:
                     result = json.loads(match.group(0))
-                    print("✅ Successfully parsed extracted JSON")
+                    print("✅ Succ")
                     return result
                 except json.JSONDecodeError as e:
-                    print(f"❌ Extracted JSON parse failed: {e}")
-                    return None
+                    print(f"❌ Ee}")
+None
 
-            print("❌ No valid JSON found in response")
-            print(f"❌ Raw content: {content[:200]}...")
-            return None
+            print("❌ Noonse")
+e
 
         except Exception as e:
-            print(f"❌ Model call failed: {e}")
-            print(f"❌ Exception type: {type(e)}")
+            print(f"❌ Model call ")
+            print(f"❌ E)
+)
             traceback.print_exc()
-            return None
+            return None"(e)}s: {stron detail"❌ Exceptirint(f           p pe(e)}"n type: {typtioxce
 
     async def reflect(self, transcript: str) -> dict:
         if not self.client:
-            print("❌ No Azure OpenAI client available")
             return SILENCE_FALLBACK
 
         result = self._call_model(transcript)
 
         if result:
-            print("✅ Returning successful reflection")
             return result
 
-        print("❌ Model call failed, returning fallback")
+        # Only reached if the model truly produced nothing
         return SILENCE_FALLBACK
